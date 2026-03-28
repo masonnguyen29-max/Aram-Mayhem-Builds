@@ -319,8 +319,8 @@
             const match = await fetchMatchDetail(matchId, account.cluster);
             const build  = extractBuildFromMatch(match, account.puuid, allItemsMap);
             if (build && build.championId.toLowerCase() === championId.toLowerCase()) {
-              // Tag the game mode so user can see it on the card
-              build.gameMode = match.info.gameMode === 'ARAM' ? 'ARAM Mayhem' : match.info.gameMode;
+              // Riot API mislabels ARAM Mayhem as CLASSIC — just show ARAM Mayhem
+              build.gameMode = 'ARAM Mayhem';
               games.push(build);
             }
           } catch (e) { /* skip failed match */ }
