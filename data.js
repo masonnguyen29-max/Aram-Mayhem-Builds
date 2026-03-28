@@ -149,7 +149,7 @@ function clearSavedAccount() {
 }
 
 // Fetch recent match IDs for a PUUID (no queue filter — catches ARAM Mayhem + regular ARAM)
-async function fetchRecentARAMMatchIds(puuid, cluster, count = 30) {
+async function fetchRecentARAMMatchIds(puuid, cluster, count = 50) {
   const res = await fetch(
     `https://${cluster}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?count=${count}&api_key=${RIOT_API_KEY}`
   );
