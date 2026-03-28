@@ -317,8 +317,10 @@
         for (const matchId of matchIds) {
           try {
             const match = await fetchMatchDetail(matchId, account.cluster);
-            // mapId 12 = Howling Abyss (catches ARAM, ARAM Mayhem, and all ARAM variants)
-            if (match.info.mapId !== 12) continue;
+            // Filter to ARAM-type games (ARAM, ARAM Mayhem, and variants)
+            const gameMode = match.info.gameMode;
+            const mapId    = match.info.mapId;
+            if (gameMode !== 'ARAM' && mapId !== 12) continue;
             const build = extractBuildFromMatch(match, account.puuid, allItemsMap);
             if (build && build.championId.toLowerCase() === championId.toLowerCase()) {
               games.push(build);
