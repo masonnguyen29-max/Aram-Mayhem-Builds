@@ -148,10 +148,10 @@ function clearSavedAccount() {
   localStorage.removeItem('riot_account');
 }
 
-// Fetch recent ARAM match IDs for a PUUID
-async function fetchRecentARAMMatchIds(puuid, cluster, count = 15) {
+// Fetch recent match IDs for a PUUID (no queue filter — catches ARAM Mayhem + regular ARAM)
+async function fetchRecentARAMMatchIds(puuid, cluster, count = 30) {
   const res = await fetch(
-    `https://${cluster}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=450&count=${count}&api_key=${RIOT_API_KEY}`
+    `https://${cluster}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?count=${count}&api_key=${RIOT_API_KEY}`
   );
   if (!res.ok) throw new Error('Failed to fetch match history. Your API key may have expired.');
   return res.json();
