@@ -317,15 +317,16 @@
         for (const matchId of matchIds) {
           try {
             const match = await fetchMatchDetail(matchId, account.cluster);
-            // Filter to ARAM-type games (ARAM, ARAM Mayhem, and variants)
             const gameMode = match.info.gameMode;
             const mapId    = match.info.mapId;
+            const p        = match.info.participants.find(pl => pl.puuid === account.puuid);
+            console.log(`Match: ${matchId} | gameMode: ${gameMode} | mapId: ${mapId} | champion: ${p?.championName}`);
             if (gameMode !== 'ARAM' && mapId !== 12) continue;
             const build = extractBuildFromMatch(match, account.puuid, allItemsMap);
             if (build && build.championId.toLowerCase() === championId.toLowerCase()) {
               games.push(build);
             }
-          } catch (e) { /* skip failed match */ }
+          } catch (e) { console.error('Match fetch error:', e); }
         }
 
         if (!games.length) {
