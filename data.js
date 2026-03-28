@@ -116,7 +116,7 @@ async function submitBuild(build) {
 //  Note: Dev key expires every 24 hours.
 //  Get a new one at developer.riotgames.com
 // ============================================================
-const RIOT_API_KEY = 'RGAPI-f288eb9e-a186-4753-b696-b751cfe0a96d';
+const RIOT_API_KEY = 'RGAPI-859e29f8-5648-4123-b47a-51e0f6afbc88';
 
 // Save account to browser after connecting
 async function connectRiotAccount(riotId, cluster) {
