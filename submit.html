@@ -129,6 +129,22 @@
       renderAugmentPool();
       renderStars();
 
+      // Pre-fill items if coming from My Games tab
+      const itemsParam = params.get('items');
+      if (itemsParam) {
+        try {
+          const prefilled = JSON.parse(decodeURIComponent(itemsParam));
+          prefilled.forEach(item => { if (selectedItems.length < 6) selectedItems.push(item); });
+          renderSelectedItems();
+        } catch (e) { /* ignore bad param */ }
+      }
+
+      // Pre-fill win/loss if coming from My Games tab
+      const winParam = params.get('win');
+      if (winParam !== null) {
+        setResult(winParam === 'true');
+      }
+
       // Item search
       document.getElementById('itemSearch').addEventListener('input', onItemSearch);
       document.getElementById('itemSearch').addEventListener('blur', () => {

@@ -5,6 +5,63 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Champion Builds – ARAM Mayhem</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── Page tabs (Community / My Games) ── */
+    .page-tabs {
+      display: flex; gap: 0; margin-bottom: 1.5rem;
+      border-bottom: 2px solid var(--border);
+    }
+    .page-tab {
+      padding: 0.65rem 1.4rem;
+      background: none; border: none;
+      color: var(--text-muted); font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: color 0.2s;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+      font-family: inherit;
+    }
+    .page-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+    .page-tab:hover  { color: var(--text); }
+
+    /* ── Connect account box ── */
+    .connect-box {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 2rem; text-align: center;
+      max-width: 460px; margin: 2rem auto;
+    }
+    .connect-box h3 { color: var(--gold); margin-bottom: 0.4rem; }
+    .connect-box p  { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem; }
+
+    .connect-form { display: flex; flex-direction: column; gap: 0.6rem; text-align: left; }
+    .connect-form label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .connect-form select.form-input { appearance: none; }
+
+    /* ── Account badge ── */
+    .account-badge {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.65rem 1rem;
+      margin-bottom: 1.25rem; font-size: 0.9rem;
+    }
+    .account-badge strong { color: var(--gold); }
+    .account-badge button {
+      background: none; border: none; color: var(--text-muted);
+      cursor: pointer; font-size: 0.8rem; font-family: inherit;
+    }
+    .account-badge button:hover { color: var(--loss-text); }
+
+    /* ── Past game cards ── */
+    .past-game-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.25rem;
+      transition: border-color 0.18s;
+    }
+    .past-game-card:hover { border-color: var(--gold); }
+    .past-game-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1rem; font-size: 0.82rem; color: var(--text-muted);
+    }
+    .past-game-actions { margin-top: 1rem; display: flex; gap: 0.5rem; }
+  </style>
 </head>
 <body>
 
@@ -18,24 +75,37 @@
 
   <div class="container">
 
-    <!-- Champion header (populated by JS) -->
+    <!-- Champion header -->
     <div class="champion-header" id="champHeader">
       <div class="loading"><div class="spinner"></div></div>
     </div>
 
-    <!-- Controls -->
-    <div class="controls-bar">
-      <div class="sort-tabs">
-        <button class="sort-tab active" data-sort="newest">Newest</button>
-        <button class="sort-tab" data-sort="fun">Most Fun</button>
-        <button class="sort-tab" data-sort="wins">Wins Only</button>
-      </div>
-      <a id="submitBtn" href="submit.html" class="btn btn-primary">+ Submit Build</a>
+    <!-- Page tabs -->
+    <div class="page-tabs">
+      <button class="page-tab active" data-tab="community">Community Builds</button>
+      <button class="page-tab"        data-tab="mygames">My Games</button>
     </div>
 
-    <!-- Builds grid (populated by JS) -->
-    <div id="buildsGrid" class="builds-grid">
-      <div class="loading"><div class="spinner"></div> Loading builds…</div>
+    <!-- ── COMMUNITY BUILDS PANEL ── -->
+    <div id="communityPanel">
+      <div class="controls-bar">
+        <div class="sort-tabs">
+          <button class="sort-tab active" data-sort="newest">Newest</button>
+          <button class="sort-tab" data-sort="fun">Most Fun</button>
+          <button class="sort-tab" data-sort="wins">Wins Only</button>
+        </div>
+        <a id="submitBtn" href="submit.html" class="btn btn-primary">+ Submit Build</a>
+      </div>
+      <div id="buildsGrid" class="builds-grid">
+        <div class="loading"><div class="spinner"></div> Loading builds…</div>
+      </div>
+    </div>
+
+    <!-- ── MY GAMES PANEL ── -->
+    <div id="myGamesPanel" style="display:none">
+      <div id="myGamesContent">
+        <!-- filled by JS -->
+      </div>
     </div>
 
   </div>
@@ -45,7 +115,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="data.js"></script>
   <script>
-    // ── URL params ──────────────────────────────────────────
+    // ── URL params ──────────────────────────────────────────────
     const params       = new URLSearchParams(window.location.search);
     const championId   = params.get('id')   || '';
     const championName = params.get('name') || championId;
@@ -54,32 +124,34 @@
     document.getElementById('submitBtn').href =
       `submit.html?champion=${encodeURIComponent(championId)}&name=${encodeURIComponent(championName)}`;
 
-    // ── State ───────────────────────────────────────────────
-    let allBuilds   = [];
-    let currentSort = 'newest';
+    // ── State ───────────────────────────────────────────────────
+    let allBuilds    = [];
+    let currentSort  = 'newest';
+    let allItemsMap  = {};   // id → item object (for My Games tab)
 
-    // ── Init ────────────────────────────────────────────────
+    // ── Init ────────────────────────────────────────────────────
     async function init() {
-      await getDDVersion();      // ensure version is loaded before rendering images
+      await getDDVersion();
 
-      try {
-        allBuilds = await getBuildsForChampion(championId);
-      } catch (err) {
-        console.error(err);
-      }
+      // Load items map for My Games tab (background)
+      getItems().then(items => {
+        items.forEach(item => { allItemsMap[item.id] = item; });
+      });
+
+      try { allBuilds = await getBuildsForChampion(championId); }
+      catch (err) { console.error(err); }
 
       renderHeader();
       renderBuilds();
     }
 
-    // ── Header ──────────────────────────────────────────────
+    // ── Champion header ─────────────────────────────────────────
     function renderHeader() {
       const total   = allBuilds.length;
       const wins    = allBuilds.filter(b => b.is_win).length;
       const winRate = total ? Math.round((wins / total) * 100) : '–';
       const avgFun  = total
-        ? (allBuilds.reduce((s, b) => s + b.fun_rating, 0) / total).toFixed(1)
-        : '–';
+        ? (allBuilds.reduce((s, b) => s + b.fun_rating, 0) / total).toFixed(1) : '–';
 
       document.getElementById('champHeader').innerHTML = `
         <img src="${champImgUrl(championId)}" alt="${championName}">
@@ -87,96 +159,63 @@
           <h1>${championName}</h1>
           <p class="subtitle">ARAM Mayhem</p>
           <div class="stats-row">
-            <div class="stat-badge">
-              <div class="val">${total}</div>
-              <div class="lbl">Builds</div>
-            </div>
-            <div class="stat-badge">
-              <div class="val">${total ? winRate + '%' : '–'}</div>
-              <div class="lbl">Win Rate</div>
-            </div>
-            <div class="stat-badge">
-              <div class="val">${avgFun}</div>
-              <div class="lbl">Avg Fun</div>
-            </div>
+            <div class="stat-badge"><div class="val">${total}</div><div class="lbl">Builds</div></div>
+            <div class="stat-badge"><div class="val">${total ? winRate + '%' : '–'}</div><div class="lbl">Win Rate</div></div>
+            <div class="stat-badge"><div class="val">${avgFun}</div><div class="lbl">Avg Fun</div></div>
           </div>
         </div>
       `;
     }
 
-    // ── Builds ──────────────────────────────────────────────
+    // ── Community builds ────────────────────────────────────────
     function renderBuilds() {
       const grid = document.getElementById('buildsGrid');
-      let builds  = [...allBuilds];
+      let builds = [...allBuilds];
 
-      if (currentSort === 'fun') {
-        builds.sort((a, b) => b.fun_rating - a.fun_rating);
-      } else if (currentSort === 'wins') {
-        builds = builds.filter(b => b.is_win);
-      }
-      // 'newest' already sorted by DB (created_at desc)
+      if (currentSort === 'fun')  builds.sort((a, b) => b.fun_rating - a.fun_rating);
+      if (currentSort === 'wins') builds = builds.filter(b => b.is_win);
 
       if (!builds.length) {
-        const msg = currentSort === 'wins'
-          ? 'No wins submitted yet for this champion.'
-          : `No builds yet for ${championName}. Be the first!`;
-
         grid.innerHTML = `
           <div class="empty-state">
             <h3>${currentSort === 'wins' ? 'No wins yet' : 'No builds yet!'}</h3>
-            <p>${msg}</p>
+            <p>${currentSort === 'wins' ? 'No wins submitted yet.' : `Be the first to submit a build for ${championName}!`}</p>
             <a href="submit.html?champion=${encodeURIComponent(championId)}&name=${encodeURIComponent(championName)}"
-               class="btn btn-primary" style="margin-top:1.25rem">
-              + Submit Build
-            </a>
-          </div>
-        `;
+               class="btn btn-primary" style="margin-top:1.25rem">+ Submit Build</a>
+          </div>`;
         return;
       }
-
       grid.innerHTML = builds.map(buildCardHTML).join('');
     }
 
-    // ── Build card ──────────────────────────────────────────
     function buildCardHTML(build) {
       const items    = Array.isArray(build.items)    ? build.items    : [];
       const augments = Array.isArray(build.augments) ? build.augments : [];
 
-      // 6 item slots
       const itemSlots = Array.from({ length: 6 }, (_, i) => {
         const item = items[i];
         return item
-          ? `<div class="item-slot" title="${item.name}">
-               <img src="${itemImgUrl(item.image)}" alt="${item.name}" loading="lazy">
-             </div>`
+          ? `<div class="item-slot" title="${item.name}"><img src="${itemImgUrl(item.image)}" alt="${item.name}" loading="lazy"></div>`
           : `<div class="item-slot empty"></div>`;
       }).join('');
 
-      // Augment chips
       const augmentChips = augments.length
         ? augments.map(a => `<span class="augment-chip ${a.tier}">${a.name}</span>`).join('')
         : `<span style="color:var(--text-muted);font-size:0.8rem">No augments listed</span>`;
 
-      const winClass = build.is_win ? 'win' : 'loss';
-      const winLabel = build.is_win ? '✓ WIN' : '✗ LOSS';
-
       return `
         <div class="build-card">
           <div class="build-card-header">
-            <span class="win-badge ${winClass}">${winLabel}</span>
-            <span class="fun-stars" title="${build.fun_rating}/5 fun">${starsHTML(build.fun_rating)}</span>
+            <span class="win-badge ${build.is_win ? 'win' : 'loss'}">${build.is_win ? '✓ WIN' : '✗ LOSS'}</span>
+            <span class="fun-stars">${starsHTML(build.fun_rating)}</span>
           </div>
           <div class="items-row">${itemSlots}</div>
           <div class="augments-row">${augmentChips}</div>
           ${build.notes ? `<p class="build-notes">"${build.notes}"</p>` : ''}
-          <div class="build-footer">
-            by <strong>${build.submitted_by}</strong> &bull; ${timeAgo(build.created_at)}
-          </div>
-        </div>
-      `;
+          <div class="build-footer">by <strong>${build.submitted_by}</strong> &bull; ${timeAgo(build.created_at)}</div>
+        </div>`;
     }
 
-    // ── Sort tabs ───────────────────────────────────────────
     document.querySelectorAll('.sort-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.sort-tab').forEach(t => t.classList.remove('active'));
@@ -185,6 +224,154 @@
         renderBuilds();
       });
     });
+
+    // ── Page tab switching ───────────────────────────────────────
+    document.querySelectorAll('.page-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        const isMyGames = tab.dataset.tab === 'mygames';
+        document.getElementById('communityPanel').style.display = isMyGames ? 'none' : '';
+        document.getElementById('myGamesPanel').style.display   = isMyGames ? '' : 'none';
+
+        if (isMyGames) renderMyGamesPanel();
+      });
+    });
+
+    // ── MY GAMES ────────────────────────────────────────────────
+    function renderMyGamesPanel() {
+      const account = getSavedAccount();
+      const content = document.getElementById('myGamesContent');
+
+      if (!account) {
+        content.innerHTML = connectAccountHTML();
+        return;
+      }
+
+      content.innerHTML = `
+        <div class="account-badge">
+          <span>Connected as <strong>${account.gameName}#${account.tagLine}</strong></span>
+          <button onclick="disconnectAccount()">Disconnect</button>
+        </div>
+        <div id="pastGamesGrid" class="builds-grid">
+          <div class="loading"><div class="spinner"></div> Fetching your games…</div>
+        </div>`;
+
+      loadPastGames(account);
+    }
+
+    function connectAccountHTML() {
+      return `
+        <div class="connect-box">
+          <h3>Connect Your Account</h3>
+          <p>Enter your Riot ID to see your past ARAM games for ${championName} and submit them as builds.</p>
+          <div class="connect-form">
+            <label>Riot ID</label>
+            <input class="form-input" id="riotIdInput" placeholder="YourName#NA1" autocomplete="off">
+            <label>Region</label>
+            <select class="form-input" id="regionSelect">
+              <option value="americas">NA / BR / LAN / LAS</option>
+              <option value="europe">EUW / EUNE / TR / RU</option>
+              <option value="asia">Korea / Japan</option>
+              <option value="sea">OCE / SEA</option>
+            </select>
+            <button class="btn btn-primary" style="margin-top:0.25rem;justify-content:center"
+                    onclick="handleConnect()">Connect Account</button>
+          </div>
+        </div>`;
+    }
+
+    async function handleConnect() {
+      const riotId  = document.getElementById('riotIdInput').value.trim();
+      const cluster = document.getElementById('regionSelect').value;
+      if (!riotId) { showToast('Enter your Riot ID first!', 'error'); return; }
+
+      showToast('Connecting…');
+      try {
+        await connectRiotAccount(riotId, cluster);
+        showToast('Account connected!', 'success');
+        renderMyGamesPanel();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function disconnectAccount() {
+      clearSavedAccount();
+      renderMyGamesPanel();
+    }
+
+    async function loadPastGames(account) {
+      const grid = document.getElementById('pastGamesGrid');
+      try {
+        const matchIds = await fetchRecentARAMMatchIds(account.puuid, account.cluster, 20);
+
+        if (!matchIds.length) {
+          grid.innerHTML = `<div class="empty-state"><h3>No ARAM games found</h3><p>Play some ARAM Mayhem and check back!</p></div>`;
+          return;
+        }
+
+        // Fetch each match and filter for this champion
+        const games = [];
+        for (const matchId of matchIds) {
+          try {
+            const match = await fetchMatchDetail(matchId, account.cluster);
+            const build = extractBuildFromMatch(match, account.puuid, allItemsMap);
+            if (build && build.championId.toLowerCase() === championId.toLowerCase()) {
+              games.push(build);
+            }
+          } catch (e) { /* skip failed match */ }
+        }
+
+        if (!games.length) {
+          grid.innerHTML = `
+            <div class="empty-state">
+              <h3>No recent ${championName} games</h3>
+              <p>No ARAM games found with ${championName} in your last 20 matches.</p>
+            </div>`;
+          return;
+        }
+
+        grid.innerHTML = games.map(pastGameCardHTML).join('');
+
+      } catch (err) {
+        grid.innerHTML = `
+          <div class="empty-state">
+            <h3>Failed to load games</h3>
+            <p>${err.message}</p>
+            <p style="margin-top:0.5rem;font-size:0.8rem">Your API key may have expired. Get a new one at developer.riotgames.com</p>
+          </div>`;
+      }
+    }
+
+    function pastGameCardHTML(game) {
+      const itemSlots = Array.from({ length: 6 }, (_, i) => {
+        const item = game.items[i];
+        return item
+          ? `<div class="item-slot" title="${item.name}"><img src="${itemImgUrl(item.image)}" alt="${item.name}" loading="lazy"></div>`
+          : `<div class="item-slot empty"></div>`;
+      }).join('');
+
+      // Encode items for submit page pre-fill
+      const itemsParam  = encodeURIComponent(JSON.stringify(game.items));
+      const submitLink  = `submit.html?champion=${encodeURIComponent(championId)}&name=${encodeURIComponent(championName)}&items=${itemsParam}&win=${game.isWin}`;
+
+      return `
+        <div class="past-game-card">
+          <div class="past-game-meta">
+            <span class="win-badge ${game.isWin ? 'win' : 'loss'}">${game.isWin ? '✓ WIN' : '✗ LOSS'}</span>
+            <span>${game.duration} min &bull; ${game.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+          </div>
+          <div class="items-row">${itemSlots}</div>
+          <div class="augments-row">
+            <span style="color:var(--text-muted);font-size:0.8rem">Add augments when submitting ↓</span>
+          </div>
+          <div class="past-game-actions">
+            <a href="${submitLink}" class="btn btn-primary">+ Submit as Build</a>
+          </div>
+        </div>`;
+    }
 
     init();
   </script>

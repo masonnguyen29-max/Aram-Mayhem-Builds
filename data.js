@@ -112,6 +112,86 @@ async function submitBuild(build) {
 }
 
 // ============================================================
+//  RIOT API
+//  Note: Dev key expires every 24 hours.
+//  Get a new one at developer.riotgames.com
+// ============================================================
+const RIOT_API_KEY = 'RGAPI-f288eb9e-a186-4753-b696-b751cfe0a96d';
+
+// Save account to browser after connecting
+async function connectRiotAccount(riotId, cluster) {
+  const parts = riotId.split('#');
+  if (parts.length !== 2) throw new Error('Invalid format. Use Name#TAG (e.g. Mason#NA1)');
+  const [gameName, tagLine] = parts;
+
+  const res = await fetch(
+    `https://${cluster}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}?api_key=${RIOT_API_KEY}`
+  );
+  if (!res.ok) throw new Error('Account not found. Check your Riot ID and region.');
+
+  const account = await res.json();
+  localStorage.setItem('riot_account', JSON.stringify({
+    puuid:    account.puuid,
+    gameName: account.gameName,
+    tagLine:  account.tagLine,
+    cluster
+  }));
+  return account;
+}
+
+function getSavedAccount() {
+  const saved = localStorage.getItem('riot_account');
+  return saved ? JSON.parse(saved) : null;
+}
+
+function clearSavedAccount() {
+  localStorage.removeItem('riot_account');
+}
+
+// Fetch recent ARAM match IDs for a PUUID
+async function fetchRecentARAMMatchIds(puuid, cluster, count = 15) {
+  const res = await fetch(
+    `https://${cluster}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=450&count=${count}&api_key=${RIOT_API_KEY}`
+  );
+  if (!res.ok) throw new Error('Failed to fetch match history. Your API key may have expired.');
+  return res.json();
+}
+
+// Fetch full details for one match
+async function fetchMatchDetail(matchId, cluster) {
+  const res = await fetch(
+    `https://${cluster}.api.riotgames.com/lol/match/v5/matches/${matchId}?api_key=${RIOT_API_KEY}`
+  );
+  if (!res.ok) throw new Error('Failed to fetch match details.');
+  return res.json();
+}
+
+// Pull out the relevant stats for a player from a match
+function extractBuildFromMatch(match, puuid, itemsMap) {
+  const p = match.info.participants.find(pl => pl.puuid === puuid);
+  if (!p) return null;
+
+  // Champion name from Riot API sometimes differs from Data Dragon ID
+  // e.g. "FiddleSticks" vs "Fiddlesticks" — we normalise below
+  const championId = p.championName;
+
+  const itemIds = [p.item0, p.item1, p.item2, p.item3, p.item4, p.item5]
+    .filter(id => id > 0);
+
+  const items = itemIds.map(id => {
+    const found = itemsMap[String(id)];
+    return found
+      ? { id: String(id), name: found.name, image: found.image, gold: found.gold }
+      : { id: String(id), name: `Item ${id}`, image: `${id}.png`, gold: 0 };
+  });
+
+  const date     = new Date(match.info.gameStartTimestamp);
+  const duration = Math.floor(match.info.gameDuration / 60);
+
+  return { championId, items, isWin: p.win, date, duration, matchId: match.metadata.matchId };
+}
+
+// ============================================================
 //  UTILITIES
 // ============================================================
 function starsHTML(rating) {
