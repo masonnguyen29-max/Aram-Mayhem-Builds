@@ -313,18 +313,21 @@
         }
 
         // Fetch each match and filter for this champion
+        console.log(`Fetched ${matchIds.length} match IDs. Looking for champion: ${championId}`);
         const games = [];
         for (const matchId of matchIds) {
           try {
             const match = await fetchMatchDetail(matchId, account.cluster);
-            const build  = extractBuildFromMatch(match, account.puuid, allItemsMap);
+            const p     = match.info.participants.find(pl => pl.puuid === account.puuid);
+            console.log(`Match ${matchId}: champion=${p?.championName}, date=${new Date(match.info.gameStartTimestamp).toLocaleDateString()}`);
+            const build = extractBuildFromMatch(match, account.puuid, allItemsMap);
             if (build && build.championId.toLowerCase() === championId.toLowerCase()) {
-              // Riot API mislabels ARAM Mayhem as CLASSIC — just show ARAM Mayhem
               build.gameMode = 'ARAM Mayhem';
               games.push(build);
             }
-          } catch (e) { /* skip failed match */ }
+          } catch (e) { console.error(`Failed: ${matchId}`, e.message); }
         }
+        console.log(`Found ${games.length} ${championId} games`);
 
         if (!games.length) {
           grid.innerHTML = `
