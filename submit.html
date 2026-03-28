@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Build – ARAM Mayhem</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="nav-logo">ARAM <span>Mayhem</span></a>
+    <ul class="nav-links">
+      <li><a href="index.html">Champions</a></li>
+      <li><a href="submit.html">Submit Build</a></li>
+    </ul>
+  </nav>
+
+  <div class="form-page">
+    <h1>Submit a Build</h1>
+    <p class="subtitle">Share your ARAM Mayhem build with your squad</p>
+
+    <!-- ── Champion ───────────────────────────────────────── -->
+    <div class="form-section">
+      <h3>Champion</h3>
+      <div id="championSection">
+        <div class="loading"><div class="spinner"></div> Loading…</div>
+      </div>
+    </div>
+
+    <!-- ── Items ──────────────────────────────────────────── -->
+    <div class="form-section">
+      <h3>Items <span style="color:var(--text-muted);font-weight:400;text-transform:none;font-size:0.8rem">(up to 6)</span></h3>
+      <div class="item-search-wrapper">
+        <input type="text" class="form-input" id="itemSearch"
+               placeholder="Search for an item…" autocomplete="off">
+        <div class="item-dropdown" id="itemDropdown" style="display:none"></div>
+      </div>
+      <div class="selected-items-display" id="selectedItemsDisplay">
+        <span id="itemsPlaceholder" style="color:var(--text-muted);font-size:0.8rem">No items selected</span>
+      </div>
+    </div>
+
+    <!-- ── Augments ───────────────────────────────────────── -->
+    <div class="form-section">
+      <h3>Augments <span style="color:var(--text-muted);font-weight:400;text-transform:none;font-size:0.8rem">(up to 3)</span></h3>
+      <div class="tier-tabs" id="tierTabs">
+        <button class="tier-tab active" data-tier="all">All</button>
+        <button class="tier-tab" data-tier="silver">Silver</button>
+        <button class="tier-tab" data-tier="gold">Gold</button>
+        <button class="tier-tab" data-tier="prismatic">Prismatic</button>
+      </div>
+      <div class="augment-pool" id="augmentPool"></div>
+      <div class="selected-augments-display" id="selectedAugmentsDisplay">
+        <span id="augPlaceholder" style="color:var(--text-muted);font-size:0.8rem">No augments selected</span>
+      </div>
+    </div>
+
+    <!-- ── Result ─────────────────────────────────────────── -->
+    <div class="form-section">
+      <h3>Result</h3>
+      <div class="result-toggle">
+        <button class="result-btn win-btn active" id="winBtn"  onclick="setResult(true)">✓ WIN</button>
+        <button class="result-btn loss-btn"        id="lossBtn" onclick="setResult(false)">✗ LOSS</button>
+      </div>
+    </div>
+
+    <!-- ── Fun Rating ─────────────────────────────────────── -->
+    <div class="form-section">
+      <h3>Fun Rating</h3>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.75rem">
+        How fun was this build to play?
+      </p>
+      <div class="star-rating" id="starRating"></div>
+    </div>
+
+    <!-- ── Your Name ──────────────────────────────────────── -->
+    <div class="form-section">
+      <h3>Your Name</h3>
+      <input type="text" class="form-input" id="submitterName"
+             placeholder="Summoner name or nickname" maxlength="30">
+    </div>
+
+    <!-- ── Notes ─────────────────────────────────────────── -->
+    <div class="form-section">
+      <h3>Notes
+        <span style="color:var(--text-muted);font-weight:400;text-transform:none;font-size:0.8rem">
+          (optional)
+        </span>
+      </h3>
+      <textarea class="form-input" id="notes" rows="3"
+                placeholder="Any tips or context for this build?"></textarea>
+    </div>
+
+    <!-- ── Submit ─────────────────────────────────────────── -->
+    <button class="btn btn-primary" id="submitBtn"
+            style="width:100%;padding:1rem;font-size:1rem;justify-content:center"
+            onclick="handleSubmit()">
+      Submit Build
+    </button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="data.js"></script>
+  <script>
+    // ── URL params ──────────────────────────────────────────
+    const params                = new URLSearchParams(window.location.search);
+    const preselectedId         = params.get('champion') || '';
+    const preselectedName       = params.get('name')     || '';
+
+    // ── State ───────────────────────────────────────────────
+    let selectedChampion  = null;
+    let selectedItems     = [];   // { id, name, image, gold }
+    let selectedAugments  = [];   // { name, tier }
+    let isWin             = true;
+    let funRating         = 3;
+    let currentTier       = 'all';
+    let allChampions      = [];
+    let allItems          = [];
+
+    // ── Init ────────────────────────────────────────────────
+    async function init() {
+      await getDDVersion();
+      [allChampions, allItems] = await Promise.all([getChampions(), getItems()]);
+
+      renderChampionSection();
+      renderAugmentPool();
+      renderStars();
+
+      // Item search
+      document.getElementById('itemSearch').addEventListener('input', onItemSearch);
+      document.getElementById('itemSearch').addEventListener('blur', () => {
+        setTimeout(() => { document.getElementById('itemDropdown').style.display = 'none'; }, 160);
+      });
+    }
+
+    // ── Champion section ────────────────────────────────────
+    function renderChampionSection() {
+      const section = document.getElementById('championSection');
+
+      // Pre-selected from URL (coming from champion page)
+      if (preselectedId) {
+        selectedChampion = { id: preselectedId, name: preselectedName || preselectedId };
+        section.innerHTML = champSelectedHTML(false);
+        return;
+      }
+
+      section.innerHTML = `
+        <div class="champion-selector-wrapper">
+          <input type="text" class="form-input" id="champSearch"
+                 placeholder="Search for a champion…" autocomplete="off">
+          <div class="champion-dropdown" id="champDropdown" style="display:none"></div>
+        </div>
+        <div id="champSelectedDisplay" style="margin-top:0.75rem"></div>
+      `;
+
+      document.getElementById('champSearch').addEventListener('input', onChampSearch);
+      document.getElementById('champSearch').addEventListener('blur', () => {
+        setTimeout(() => { document.getElementById('champDropdown').style.display = 'none'; }, 160);
+      });
+    }
+
+    function champSelectedHTML(showChange = true) {
+      return `
+        <div class="selected-champion">
+          <img src="${champImgUrl(selectedChampion.id)}" alt="${selectedChampion.name}">
+          <div>
+            <div class="sc-name">${selectedChampion.name}</div>
+            ${showChange ? `<button class="sc-change" onclick="clearChampion()">Change</button>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function onChampSearch(e) {
+      const q        = e.target.value.toLowerCase().trim();
+      const dropdown = document.getElementById('champDropdown');
+      if (!q) { dropdown.style.display = 'none'; return; }
+
+      const hits = allChampions.filter(c => c.name.toLowerCase().includes(q)).slice(0, 10);
+      if (!hits.length) { dropdown.style.display = 'none'; return; }
+
+      dropdown.style.display = 'block';
+      dropdown.innerHTML = hits.map(c => `
+        <div class="dropdown-item" onclick="pickChampion('${c.id}', ${JSON.stringify(c.name)})">
+          <img src="${champImgUrl(c.id)}" alt="${c.name}">
+          <span>${c.name}</span>
+        </div>
+      `).join('');
+    }
+
+    function pickChampion(id, name) {
+      selectedChampion = { id, name };
+      document.getElementById('champDropdown').style.display = 'none';
+      document.getElementById('champSearch').value = name;
+      document.getElementById('champSelectedDisplay').innerHTML = champSelectedHTML(true);
+    }
+
+    function clearChampion() {
+      selectedChampion = null;
+      document.getElementById('champSearch').value = '';
+      document.getElementById('champSelectedDisplay').innerHTML = '';
+    }
+
+    // ── Item search ─────────────────────────────────────────
+    function onItemSearch(e) {
+      const q        = e.target.value.toLowerCase().trim();
+      const dropdown = document.getElementById('itemDropdown');
+      if (q.length < 2) { dropdown.style.display = 'none'; return; }
+
+      const hits = allItems
+        .filter(item => item.name.toLowerCase().includes(q) && !selectedItems.find(s => s.id === item.id))
+        .slice(0, 8);
+
+      if (!hits.length) { dropdown.style.display = 'none'; return; }
+
+      dropdown.style.display = 'block';
+      dropdown.innerHTML = hits.map(item => `
+        <div class="item-dropdown-item"
+             onclick="addItem(${JSON.stringify(item.id)}, ${JSON.stringify(item.name)}, ${JSON.stringify(item.image)}, ${item.gold})">
+          <img src="${itemImgUrl(item.image)}" alt="${item.name}">
+          <span>${item.name}</span>
+          <span class="item-cost">${item.gold}g</span>
+        </div>
+      `).join('');
+    }
+
+    function addItem(id, name, image, gold) {
+      if (selectedItems.length >= 6) { showToast('Max 6 items!', 'error'); return; }
+      if (selectedItems.find(i => i.id === id)) return;
+      selectedItems.push({ id, name, image, gold });
+      document.getElementById('itemSearch').value = '';
+      document.getElementById('itemDropdown').style.display = 'none';
+      renderSelectedItems();
+    }
+
+    function removeItem(id) {
+      selectedItems = selectedItems.filter(i => i.id !== id);
+      renderSelectedItems();
+    }
+
+    function renderSelectedItems() {
+      const display = document.getElementById('selectedItemsDisplay');
+      const ph      = document.getElementById('itemsPlaceholder');
+      if (ph) ph.style.display = selectedItems.length ? 'none' : '';
+
+      // Remove old item nodes (keep placeholder span)
+      display.querySelectorAll('.selected-item').forEach(n => n.remove());
+
+      selectedItems.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'selected-item';
+        div.title     = item.name;
+        div.innerHTML = `
+          <img src="${itemImgUrl(item.image)}" alt="${item.name}">
+          <button class="remove-btn" onclick="removeItem('${item.id}')">×</button>
+        `;
+        display.appendChild(div);
+      });
+    }
+
+    // ── Augment pool ────────────────────────────────────────
+    function renderAugmentPool() {
+      const pool = document.getElementById('augmentPool');
+
+      let list = [];
+      if (currentTier === 'all') {
+        list = [
+          ...AUGMENTS.prismatic.map(n => ({ name: n, tier: 'prismatic' })),
+          ...AUGMENTS.gold.map(n => ({ name: n, tier: 'gold' })),
+          ...AUGMENTS.silver.map(n => ({ name: n, tier: 'silver' }))
+        ];
+      } else {
+        list = AUGMENTS[currentTier].map(n => ({ name: n, tier: currentTier }));
+        list.sort((a, b) => a.name.localeCompare(b.name));
+      }
+
+      pool.innerHTML = list.map(a => {
+        const sel = selectedAugments.find(s => s.name === a.name) ? 'selected' : '';
+        return `<span class="augment-option ${a.tier} ${sel}"
+                      onclick="toggleAugment(${JSON.stringify(a.name)}, '${a.tier}')">${a.name}</span>`;
+      }).join('');
+    }
+
+    function toggleAugment(name, tier) {
+      const idx = selectedAugments.findIndex(a => a.name === name);
+      if (idx >= 0) {
+        selectedAugments.splice(idx, 1);
+      } else {
+        if (selectedAugments.length >= 3) { showToast('Max 3 augments!', 'error'); return; }
+        selectedAugments.push({ name, tier });
+      }
+      renderAugmentPool();
+      renderSelectedAugments();
+    }
+
+    function renderSelectedAugments() {
+      const display = document.getElementById('selectedAugmentsDisplay');
+      const ph      = document.getElementById('augPlaceholder');
+      if (ph) ph.style.display = selectedAugments.length ? 'none' : '';
+
+      display.querySelectorAll('.augment-chip').forEach(n => n.remove());
+      selectedAugments.forEach(a => {
+        const span = document.createElement('span');
+        span.className   = `augment-chip ${a.tier}`;
+        span.textContent = a.name;
+        display.appendChild(span);
+      });
+    }
+
+    // Tier tabs
+    document.querySelectorAll('.tier-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tier-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentTier = tab.dataset.tier;
+        renderAugmentPool();
+      });
+    });
+
+    // ── Win / Loss ──────────────────────────────────────────
+    function setResult(win) {
+      isWin = win;
+      document.getElementById('winBtn').classList.toggle('active', win);
+      document.getElementById('lossBtn').classList.toggle('active', !win);
+    }
+
+    // ── Fun rating ──────────────────────────────────────────
+    function setFunRating(rating) {
+      funRating = rating;
+      renderStars();
+    }
+
+    function renderStars() {
+      const container = document.getElementById('starRating');
+      container.innerHTML = [1, 2, 3, 4, 5].map(i => `
+        <button class="star-btn ${i <= funRating ? 'active' : ''}"
+                data-star="${i}"
+                onclick="setFunRating(${i})">★</button>
+      `).join('');
+    }
+
+    // ── Submit ──────────────────────────────────────────────
+    async function handleSubmit() {
+      if (!selectedChampion) { showToast('Please select a champion!', 'error'); return; }
+      if (!selectedItems.length) { showToast('Please add at least 1 item!', 'error'); return; }
+
+      const name = document.getElementById('submitterName').value.trim();
+      if (!name) { showToast('Please enter your name!', 'error'); return; }
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled    = true;
+      btn.textContent = 'Submitting…';
+
+      try {
+        await submitBuild({
+          champion_id:   selectedChampion.id,
+          champion_name: selectedChampion.name,
+          items:         selectedItems,
+          augments:      selectedAugments,
+          is_win:        isWin,
+          fun_rating:    funRating,
+          submitted_by:  name,
+          notes:         document.getElementById('notes').value.trim() || null
+        });
+
+        showToast('Build submitted! Redirecting…', 'success');
+        setTimeout(() => {
+          window.location.href =
+            `champion.html?id=${encodeURIComponent(selectedChampion.id)}&name=${encodeURIComponent(selectedChampion.name)}`;
+        }, 1600);
+
+      } catch (err) {
+        console.error(err);
+        showToast('Error submitting build. Please try again.', 'error');
+        btn.disabled    = false;
+        btn.textContent = 'Submit Build';
+      }
+    }
+
+    init();
+  </script>
+
+</body>
+</html>

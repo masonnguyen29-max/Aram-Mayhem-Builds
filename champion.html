@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Champion Builds – ARAM Mayhem</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="nav-logo">ARAM <span>Mayhem</span></a>
+    <ul class="nav-links">
+      <li><a href="index.html">Champions</a></li>
+      <li><a href="submit.html">Submit Build</a></li>
+    </ul>
+  </nav>
+
+  <div class="container">
+
+    <!-- Champion header (populated by JS) -->
+    <div class="champion-header" id="champHeader">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-bar">
+      <div class="sort-tabs">
+        <button class="sort-tab active" data-sort="newest">Newest</button>
+        <button class="sort-tab" data-sort="fun">Most Fun</button>
+        <button class="sort-tab" data-sort="wins">Wins Only</button>
+      </div>
+      <a id="submitBtn" href="submit.html" class="btn btn-primary">+ Submit Build</a>
+    </div>
+
+    <!-- Builds grid (populated by JS) -->
+    <div id="buildsGrid" class="builds-grid">
+      <div class="loading"><div class="spinner"></div> Loading builds…</div>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="data.js"></script>
+  <script>
+    // ── URL params ──────────────────────────────────────────
+    const params       = new URLSearchParams(window.location.search);
+    const championId   = params.get('id')   || '';
+    const championName = params.get('name') || championId;
+
+    document.title = `${championName} Builds – ARAM Mayhem`;
+    document.getElementById('submitBtn').href =
+      `submit.html?champion=${encodeURIComponent(championId)}&name=${encodeURIComponent(championName)}`;
+
+    // ── State ───────────────────────────────────────────────
+    let allBuilds   = [];
+    let currentSort = 'newest';
+
+    // ── Init ────────────────────────────────────────────────
+    async function init() {
+      await getDDVersion();      // ensure version is loaded before rendering images
+
+      try {
+        allBuilds = await getBuildsForChampion(championId);
+      } catch (err) {
+        console.error(err);
+      }
+
+      renderHeader();
+      renderBuilds();
+    }
+
+    // ── Header ──────────────────────────────────────────────
+    function renderHeader() {
+      const total   = allBuilds.length;
+      const wins    = allBuilds.filter(b => b.is_win).length;
+      const winRate = total ? Math.round((wins / total) * 100) : '–';
+      const avgFun  = total
+        ? (allBuilds.reduce((s, b) => s + b.fun_rating, 0) / total).toFixed(1)
+        : '–';
+
+      document.getElementById('champHeader').innerHTML = `
+        <img src="${champImgUrl(championId)}" alt="${championName}">
+        <div class="champion-header-info">
+          <h1>${championName}</h1>
+          <p class="subtitle">ARAM Mayhem</p>
+          <div class="stats-row">
+            <div class="stat-badge">
+              <div class="val">${total}</div>
+              <div class="lbl">Builds</div>
+            </div>
+            <div class="stat-badge">
+              <div class="val">${total ? winRate + '%' : '–'}</div>
+              <div class="lbl">Win Rate</div>
+            </div>
+            <div class="stat-badge">
+              <div class="val">${avgFun}</div>
+              <div class="lbl">Avg Fun</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ── Builds ──────────────────────────────────────────────
+    function renderBuilds() {
+      const grid = document.getElementById('buildsGrid');
+      let builds  = [...allBuilds];
+
+      if (currentSort === 'fun') {
+        builds.sort((a, b) => b.fun_rating - a.fun_rating);
+      } else if (currentSort === 'wins') {
+        builds = builds.filter(b => b.is_win);
+      }
+      // 'newest' already sorted by DB (created_at desc)
+
+      if (!builds.length) {
+        const msg = currentSort === 'wins'
+          ? 'No wins submitted yet for this champion.'
+          : `No builds yet for ${championName}. Be the first!`;
+
+        grid.innerHTML = `
+          <div class="empty-state">
+            <h3>${currentSort === 'wins' ? 'No wins yet' : 'No builds yet!'}</h3>
+            <p>${msg}</p>
+            <a href="submit.html?champion=${encodeURIComponent(championId)}&name=${encodeURIComponent(championName)}"
+               class="btn btn-primary" style="margin-top:1.25rem">
+              + Submit Build
+            </a>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = builds.map(buildCardHTML).join('');
+    }
+
+    // ── Build card ──────────────────────────────────────────
+    function buildCardHTML(build) {
+      const items    = Array.isArray(build.items)    ? build.items    : [];
+      const augments = Array.isArray(build.augments) ? build.augments : [];
+
+      // 6 item slots
+      const itemSlots = Array.from({ length: 6 }, (_, i) => {
+        const item = items[i];
+        return item
+          ? `<div class="item-slot" title="${item.name}">
+               <img src="${itemImgUrl(item.image)}" alt="${item.name}" loading="lazy">
+             </div>`
+          : `<div class="item-slot empty"></div>`;
+      }).join('');
+
+      // Augment chips
+      const augmentChips = augments.length
+        ? augments.map(a => `<span class="augment-chip ${a.tier}">${a.name}</span>`).join('')
+        : `<span style="color:var(--text-muted);font-size:0.8rem">No augments listed</span>`;
+
+      const winClass = build.is_win ? 'win' : 'loss';
+      const winLabel = build.is_win ? '✓ WIN' : '✗ LOSS';
+
+      return `
+        <div class="build-card">
+          <div class="build-card-header">
+            <span class="win-badge ${winClass}">${winLabel}</span>
+            <span class="fun-stars" title="${build.fun_rating}/5 fun">${starsHTML(build.fun_rating)}</span>
+          </div>
+          <div class="items-row">${itemSlots}</div>
+          <div class="augments-row">${augmentChips}</div>
+          ${build.notes ? `<p class="build-notes">"${build.notes}"</p>` : ''}
+          <div class="build-footer">
+            by <strong>${build.submitted_by}</strong> &bull; ${timeAgo(build.created_at)}
+          </div>
+        </div>
+      `;
+    }
+
+    // ── Sort tabs ───────────────────────────────────────────
+    document.querySelectorAll('.sort-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.sort-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentSort = tab.dataset.sort;
+        renderBuilds();
+      });
+    });
+
+    init();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARAM Mayhem Builds</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="nav-logo">ARAM <span>Mayhem</span></a>
+    <ul class="nav-links">
+      <li><a href="index.html">Champions</a></li>
+      <li><a href="submit.html">Submit Build</a></li>
+    </ul>
+  </nav>
+
+  <div class="hero">
+    <h1>ARAM MAYHEM BUILDS</h1>
+    <p>Community-powered builds submitted by your squad</p>
+  </div>
+
+  <div class="container">
+    <div class="search-wrapper">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        class="search-input"
+        id="championSearch"
+        placeholder="Search champions..."
+        autocomplete="off"
+      >
+    </div>
+
+    <div id="championGrid" class="champion-grid">
+      <div class="loading">
+        <div class="spinner"></div>
+        Loading champions...
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Supabase must load before data.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="data.js"></script>
+  <script>
+    let allChampions = [];
+
+    async function init() {
+      try {
+        allChampions = await getChampions();
+        renderGrid(allChampions);
+      } catch (err) {
+        document.getElementById('championGrid').innerHTML =
+          '<p style="color:var(--text-muted);text-align:center;grid-column:1/-1;padding:3rem">Failed to load champions. Check your internet connection.</p>';
+      }
+    }
+
+    function renderGrid(champions) {
+      const grid = document.getElementById('championGrid');
+
+      if (!champions.length) {
+        grid.innerHTML = '<p style="color:var(--text-muted);text-align:center;grid-column:1/-1;padding:2rem">No champions found.</p>';
+        return;
+      }
+
+      grid.innerHTML = champions.map(c => `
+        <a href="champion.html?id=${encodeURIComponent(c.id)}&name=${encodeURIComponent(c.name)}"
+           class="champion-card"
+           title="${c.name}">
+          <img src="${champImgUrl(c.id)}" alt="${c.name}" loading="lazy">
+          <div class="champ-name">${c.name}</div>
+        </a>
+      `).join('');
+    }
+
+    document.getElementById('championSearch').addEventListener('input', function () {
+      const q = this.value.toLowerCase().trim();
+      renderGrid(q ? allChampions.filter(c => c.name.toLowerCase().includes(q)) : allChampions);
+    });
+
+    init();
+  </script>
+
+</body>
+</html>
