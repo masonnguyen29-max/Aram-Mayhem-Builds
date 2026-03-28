@@ -317,16 +317,13 @@
         for (const matchId of matchIds) {
           try {
             const match = await fetchMatchDetail(matchId, account.cluster);
-            const gameMode = match.info.gameMode;
-            const mapId    = match.info.mapId;
-            const p        = match.info.participants.find(pl => pl.puuid === account.puuid);
-            console.log(`Match: ${matchId} | gameMode: ${gameMode} | mapId: ${mapId} | champion: ${p?.championName}`);
-            if (gameMode !== 'ARAM' && mapId !== 12) continue;
-            const build = extractBuildFromMatch(match, account.puuid, allItemsMap);
+            const build  = extractBuildFromMatch(match, account.puuid, allItemsMap);
             if (build && build.championId.toLowerCase() === championId.toLowerCase()) {
+              // Tag the game mode so user can see it on the card
+              build.gameMode = match.info.gameMode === 'ARAM' ? 'ARAM Mayhem' : match.info.gameMode;
               games.push(build);
             }
-          } catch (e) { console.error('Match fetch error:', e); }
+          } catch (e) { /* skip failed match */ }
         }
 
         if (!games.length) {
@@ -366,7 +363,7 @@
         <div class="past-game-card">
           <div class="past-game-meta">
             <span class="win-badge ${game.isWin ? 'win' : 'loss'}">${game.isWin ? '✓ WIN' : '✗ LOSS'}</span>
-            <span>${game.duration} min &bull; ${game.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            <span style="color:var(--text-muted)">${game.gameMode || 'Unknown'} &bull; ${game.duration} min &bull; ${game.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
           </div>
           <div class="items-row">${itemSlots}</div>
           <div class="augments-row">
