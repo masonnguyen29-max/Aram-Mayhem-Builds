@@ -603,31 +603,40 @@
       }).join('');
     }
 
+    let itemSearchResults = [];
+
     function onItemSearch(e) {
       const q        = e.target.value.toLowerCase().trim();
       const dropdown = document.getElementById('itemDropdown');
       if (q.length < 2) { dropdown.style.display = 'none'; return; }
 
-      const hits = allItems
+      itemSearchResults = allItems
         .filter(item => item.name.toLowerCase().includes(q) && !selectedItems.find(s => s.id === item.id))
         .slice(0, 8);
 
-      if (!hits.length) { dropdown.style.display = 'none'; return; }
+      if (!itemSearchResults.length) { dropdown.style.display = 'none'; return; }
 
       dropdown.style.display = 'block';
-      dropdown.innerHTML = hits.map(item => `
-        <div class="item-dropdown-item"
-             onclick="addItem(${JSON.stringify(item.id)},${JSON.stringify(item.name)},${JSON.stringify(item.image)},${item.gold})">
+      dropdown.innerHTML = itemSearchResults.map((item, i) => `
+        <div class="item-dropdown-item" data-index="${i}">
           <img src="${itemImgUrl(item.image)}" alt="${item.name}">
           <span>${item.name}</span>
           <span class="item-cost">${item.gold}g</span>
         </div>
       `).join('');
+
+      dropdown.querySelectorAll('.item-dropdown-item').forEach(el => {
+        el.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          const item = itemSearchResults[el.dataset.index];
+          addItem(item);
+        });
+      });
     }
 
-    function addItem(id, name, image, gold) {
+    function addItem(item) {
       if (selectedItems.length >= 6) { showToast('Max 6 items!', 'error'); return; }
-      selectedItems.push({ id, name, image, gold });
+      selectedItems.push(item);
       document.getElementById('itemSearch').value = '';
       document.getElementById('itemDropdown').style.display = 'none';
       renderItemSlots();
