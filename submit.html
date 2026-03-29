@@ -5,6 +5,328 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Submit Build – ARAM Mayhem</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── Fast submit layout ── */
+    .fast-form {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1.5rem 2rem;
+    }
+
+    .fast-form h1 {
+      color: var(--gold);
+      font-size: 1.6rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .fast-form .subtitle {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+
+    /* Two column layout */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .form-col { display: flex; flex-direction: column; gap: 1rem; }
+
+    .fast-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+    }
+
+    .fast-section h3 {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--gold);
+      margin-bottom: 0.75rem;
+    }
+
+    /* ── Champion picker ── */
+    .champ-quick {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 0.6rem;
+    }
+
+    .champ-quick-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+      opacity: 0.5;
+      transition: opacity 0.15s, transform 0.15s;
+      background: none;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      padding: 3px;
+    }
+
+    .champ-quick-btn:hover { opacity: 0.85; transform: translateY(-2px); }
+    .champ-quick-btn.active { opacity: 1; border-color: var(--gold); }
+    .champ-quick-btn img { width: 46px; height: 46px; border-radius: 4px; display: block; }
+    .champ-quick-btn span { font-size: 0.6rem; color: var(--text-muted); max-width: 48px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .champ-search-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      position: relative;
+    }
+
+    .champ-search-row .form-input { flex: 1; }
+
+    .champ-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background: var(--bg-card);
+      border: 1px solid var(--gold);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.45rem 0.85rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-size: 0.875rem;
+    }
+
+    .dropdown-item:hover { background: var(--bg-hover); }
+    .dropdown-item img { width: 30px; height: 30px; border-radius: 4px; }
+
+    /* ── Item grid ── */
+    .item-slots-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 0.75rem;
+    }
+
+    .item-slot-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 6px;
+      border: 2px dashed var(--border);
+      background: var(--bg);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      position: relative;
+      transition: border-color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .item-slot-btn:hover { border-color: var(--gold); }
+    .item-slot-btn.filled { border-style: solid; border-color: var(--border); padding: 0; overflow: hidden; }
+    .item-slot-btn.filled img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .item-slot-btn .remove-btn {
+      position: absolute;
+      top: -6px; right: -6px;
+      width: 16px; height: 16px;
+      background: var(--loss);
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      color: white;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .item-search-wrap { position: relative; }
+    .item-dropdown {
+      position: absolute;
+      top: 100%; left: 0; right: 0; z-index: 50;
+      background: var(--bg-card);
+      border: 1px solid var(--gold);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .item-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.35rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.82rem;
+      transition: background 0.15s;
+    }
+
+    .item-dropdown-item:hover { background: var(--bg-hover); }
+    .item-dropdown-item img { width: 28px; height: 28px; border-radius: 3px; }
+    .item-cost { color: var(--gold); font-size: 0.72rem; margin-left: auto; }
+
+    /* ── Augments ── */
+    .tier-tabs {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .tier-tab {
+      padding: 0.22rem 0.65rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .tier-tab[data-tier="all"].active    { border-color: var(--text); color: var(--text); background: rgba(255,255,255,0.08); }
+    .tier-tab[data-tier="silver"].active { border-color: var(--silver); color: var(--silver); background: rgba(156,163,175,0.12); }
+    .tier-tab[data-tier="gold"].active   { border-color: var(--tier-gold); color: var(--tier-gold); background: rgba(251,191,36,0.12); }
+    .tier-tab[data-tier="prismatic"].active { border-color: var(--prismatic); color: var(--prismatic-lt); background: rgba(168,85,247,0.12); }
+
+    .augment-pool {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      max-height: 140px;
+      overflow-y: auto;
+      padding: 0.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 0.6rem;
+    }
+
+    .augment-option {
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      border: 1px solid;
+      cursor: pointer;
+      transition: all 0.12s;
+      user-select: none;
+    }
+
+    .augment-option.silver   { background: rgba(156,163,175,0.08); color: var(--silver);      border-color: rgba(156,163,175,0.25); }
+    .augment-option.gold     { background: rgba(251,191,36,0.08);  color: var(--tier-gold);   border-color: rgba(251,191,36,0.25); }
+    .augment-option.prismatic { background: rgba(168,85,247,0.08); color: var(--prismatic-lt); border-color: rgba(168,85,247,0.25); }
+    .augment-option.silver.selected   { background: rgba(156,163,175,0.3); border-color: var(--silver); }
+    .augment-option.gold.selected     { background: rgba(251,191,36,0.3);  border-color: var(--tier-gold); }
+    .augment-option.prismatic.selected { background: rgba(168,85,247,0.3); border-color: var(--prismatic); }
+
+    .selected-augs-display {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      min-height: 28px;
+      align-items: center;
+    }
+
+    /* ── Result + fun row ── */
+    .result-fun-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: stretch;
+    }
+
+    .result-toggle { display: flex; gap: 0.5rem; flex: 1; }
+
+    .result-btn {
+      flex: 1;
+      padding: 0.7rem;
+      border-radius: 8px;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      transition: all 0.18s;
+      font-family: inherit;
+    }
+
+    .result-btn.win-btn.active  { background: var(--win-bg);  border-color: var(--win);  color: var(--win-text); }
+    .result-btn.loss-btn.active { background: var(--loss-bg); border-color: var(--loss); color: var(--loss-text); }
+
+    .fun-section { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+    .fun-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .star-row { display: flex; gap: 2px; }
+
+    .star-btn {
+      font-size: 1.6rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--border);
+      transition: color 0.1s, transform 0.1s;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .star-btn.active { color: var(--gold); }
+    .star-btn:hover  { transform: scale(1.2); }
+
+    /* ── Name + notes ── */
+    .name-notes-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .name-notes-row .name-field { flex: 0 0 200px; }
+    .name-notes-row .notes-field { flex: 1; }
+
+    /* ── Submit button ── */
+    .submit-row {
+      margin-top: 1rem;
+    }
+
+    .big-submit {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      border-radius: 8px;
+      border: none;
+      background: var(--gold);
+      color: #0c1221;
+      cursor: pointer;
+      transition: background 0.18s, transform 0.1s;
+      font-family: inherit;
+    }
+
+    .big-submit:hover    { background: var(--gold-hover); transform: translateY(-1px); }
+    .big-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* ── Name saved indicator ── */
+    .name-saved { font-size: 0.7rem; color: var(--win-text); margin-top: 3px; }
+  </style>
 </head>
 <body>
 
@@ -16,88 +338,105 @@
     </ul>
   </nav>
 
-  <div class="form-page">
-    <h1>Submit a Build</h1>
-    <p class="subtitle">Share your ARAM Mayhem build with your squad</p>
+  <div class="fast-form">
+    <h1>Submit Build</h1>
+    <p class="subtitle">Log your game in under 20 seconds</p>
 
-    <!-- ── Champion ───────────────────────────────────────── -->
-    <div class="form-section">
-      <h3>Champion</h3>
-      <div id="championSection">
-        <div class="loading"><div class="spinner"></div> Loading…</div>
+    <div class="form-grid">
+
+      <!-- ── LEFT COLUMN ── -->
+      <div class="form-col">
+
+        <!-- Champion -->
+        <div class="fast-section">
+          <h3>Champion</h3>
+          <!-- Recent champions -->
+          <div class="champ-quick" id="recentChampsRow"></div>
+          <!-- Search -->
+          <div class="champ-search-row">
+            <input type="text" class="form-input" id="champSearch"
+                   placeholder="Search champion…" autocomplete="off" style="font-size:0.9rem;padding:0.55rem 0.85rem">
+            <div class="champ-dropdown" id="champDropdown" style="display:none"></div>
+          </div>
+          <div id="champSelectedDisplay" style="margin-top:0.6rem"></div>
+        </div>
+
+        <!-- Items -->
+        <div class="fast-section">
+          <h3>Items <span style="color:var(--text-muted);font-weight:400;text-transform:none;font-size:0.75rem">(up to 6)</span></h3>
+          <div class="item-slots-row" id="itemSlotsRow">
+            <!-- 6 slots rendered by JS -->
+          </div>
+          <div class="item-search-wrap">
+            <input type="text" class="form-input" id="itemSearch"
+                   placeholder="Search item…" autocomplete="off" style="font-size:0.9rem;padding:0.55rem 0.85rem">
+            <div class="item-dropdown" id="itemDropdown" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Result + Fun -->
+        <div class="fast-section">
+          <h3>Result &amp; Fun</h3>
+          <div class="result-fun-row">
+            <div class="result-toggle">
+              <button class="result-btn win-btn active" id="winBtn" onclick="setResult(true)">✓ WIN</button>
+              <button class="result-btn loss-btn"        id="lossBtn" onclick="setResult(false)">✗ LOSS</button>
+            </div>
+            <div class="fun-section">
+              <div class="fun-label">Fun</div>
+              <div class="star-row" id="starRow"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── RIGHT COLUMN ── -->
+      <div class="form-col">
+
+        <!-- Augments -->
+        <div class="fast-section" style="flex:1">
+          <h3>Augments <span style="color:var(--text-muted);font-weight:400;text-transform:none;font-size:0.75rem">(up to 3)</span></h3>
+          <div class="tier-tabs" id="tierTabs">
+            <button class="tier-tab active" data-tier="all">All</button>
+            <button class="tier-tab" data-tier="prismatic">Prismatic</button>
+            <button class="tier-tab" data-tier="gold">Gold</button>
+            <button class="tier-tab" data-tier="silver">Silver</button>
+          </div>
+          <div class="augment-pool" id="augmentPool"></div>
+          <div class="selected-augs-display" id="selectedAugsDisplay">
+            <span style="color:var(--text-muted);font-size:0.78rem" id="augPlaceholder">No augments selected</span>
+          </div>
+        </div>
+
+        <!-- Name + Notes -->
+        <div class="fast-section">
+          <h3>Your Name &amp; Notes</h3>
+          <div class="name-notes-row">
+            <div class="name-field">
+              <input type="text" class="form-input" id="submitterName"
+                     placeholder="Summoner name" maxlength="30"
+                     style="font-size:0.9rem;padding:0.55rem 0.85rem"
+                     oninput="saveName()">
+              <div class="name-saved" id="nameSaved" style="display:none">✓ Saved</div>
+            </div>
+            <div class="notes-field">
+              <textarea class="form-input" id="notes" rows="2"
+                        placeholder="Any tips? (optional)"
+                        style="font-size:0.85rem;padding:0.55rem 0.85rem;resize:none"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="submit-row">
+          <button class="big-submit" id="submitBtn" onclick="handleSubmit()">
+            SUBMIT BUILD
+          </button>
+        </div>
+
       </div>
     </div>
-
-    <!-- ── Items ──────────────────────────────────────────── -->
-    <div class="form-section">
-      <h3>Items <span style="color:var(--text-muted);font-weight:400;text-transform:none;font-size:0.8rem">(up to 6)</span></h3>
-      <div class="item-search-wrapper">
-        <input type="text" class="form-input" id="itemSearch"
-               placeholder="Search for an item…" autocomplete="off">
-        <div class="item-dropdown" id="itemDropdown" style="display:none"></div>
-      </div>
-      <div class="selected-items-display" id="selectedItemsDisplay">
-        <span id="itemsPlaceholder" style="color:var(--text-muted);font-size:0.8rem">No items selected</span>
-      </div>
-    </div>
-
-    <!-- ── Augments ───────────────────────────────────────── -->
-    <div class="form-section">
-      <h3>Augments <span style="color:var(--text-muted);font-weight:400;text-transform:none;font-size:0.8rem">(up to 3)</span></h3>
-      <div class="tier-tabs" id="tierTabs">
-        <button class="tier-tab active" data-tier="all">All</button>
-        <button class="tier-tab" data-tier="silver">Silver</button>
-        <button class="tier-tab" data-tier="gold">Gold</button>
-        <button class="tier-tab" data-tier="prismatic">Prismatic</button>
-      </div>
-      <div class="augment-pool" id="augmentPool"></div>
-      <div class="selected-augments-display" id="selectedAugmentsDisplay">
-        <span id="augPlaceholder" style="color:var(--text-muted);font-size:0.8rem">No augments selected</span>
-      </div>
-    </div>
-
-    <!-- ── Result ─────────────────────────────────────────── -->
-    <div class="form-section">
-      <h3>Result</h3>
-      <div class="result-toggle">
-        <button class="result-btn win-btn active" id="winBtn"  onclick="setResult(true)">✓ WIN</button>
-        <button class="result-btn loss-btn"        id="lossBtn" onclick="setResult(false)">✗ LOSS</button>
-      </div>
-    </div>
-
-    <!-- ── Fun Rating ─────────────────────────────────────── -->
-    <div class="form-section">
-      <h3>Fun Rating</h3>
-      <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.75rem">
-        How fun was this build to play?
-      </p>
-      <div class="star-rating" id="starRating"></div>
-    </div>
-
-    <!-- ── Your Name ──────────────────────────────────────── -->
-    <div class="form-section">
-      <h3>Your Name</h3>
-      <input type="text" class="form-input" id="submitterName"
-             placeholder="Summoner name or nickname" maxlength="30">
-    </div>
-
-    <!-- ── Notes ─────────────────────────────────────────── -->
-    <div class="form-section">
-      <h3>Notes
-        <span style="color:var(--text-muted);font-weight:400;text-transform:none;font-size:0.8rem">
-          (optional)
-        </span>
-      </h3>
-      <textarea class="form-input" id="notes" rows="3"
-                placeholder="Any tips or context for this build?"></textarea>
-    </div>
-
-    <!-- ── Submit ─────────────────────────────────────────── -->
-    <button class="btn btn-primary" id="submitBtn"
-            style="width:100%;padding:1rem;font-size:1rem;justify-content:center"
-            onclick="handleSubmit()">
-      Submit Build
-    </button>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -106,43 +445,36 @@
   <script src="data.js"></script>
   <script>
     // ── URL params ──────────────────────────────────────────
-    const params                = new URLSearchParams(window.location.search);
-    const preselectedId         = params.get('champion') || '';
-    const preselectedName       = params.get('name')     || '';
+    const params          = new URLSearchParams(window.location.search);
+    const preChampId      = params.get('champion') || '';
+    const preChampName    = params.get('name')     || '';
 
     // ── State ───────────────────────────────────────────────
-    let selectedChampion  = null;
-    let selectedItems     = [];   // { id, name, image, gold }
-    let selectedAugments  = [];   // { name, tier }
-    let isWin             = true;
-    let funRating         = 3;
-    let currentTier       = 'all';
-    let allChampions      = [];
-    let allItems          = [];
+    let selectedChampion = null;
+    let selectedItems    = [];
+    let selectedAugments = [];
+    let isWin            = true;
+    let funRating        = 3;
+    let currentTier      = 'all';
+    let allChampions     = [];
+    let allItems         = [];
 
     // ── Init ────────────────────────────────────────────────
     async function init() {
       await getDDVersion();
       [allChampions, allItems] = await Promise.all([getChampions(), getItems()]);
 
-      renderChampionSection();
+      loadSavedName();
+      renderRecentChamps();
+      renderItemSlots();
       renderAugmentPool();
       renderStars();
 
-      // Pre-fill items if coming from My Games tab
-      const itemsParam = params.get('items');
-      if (itemsParam) {
-        try {
-          const prefilled = JSON.parse(decodeURIComponent(itemsParam));
-          prefilled.forEach(item => { if (selectedItems.length < 6) selectedItems.push(item); });
-          renderSelectedItems();
-        } catch (e) { /* ignore bad param */ }
-      }
-
-      // Pre-fill win/loss if coming from My Games tab
-      const winParam = params.get('win');
-      if (winParam !== null) {
-        setResult(winParam === 'true');
+      // Pre-select champion if coming from champion page
+      if (preChampId) {
+        selectedChampion = { id: preChampId, name: preChampName || preChampId };
+        renderSelectedChamp();
+        saveRecentChamp(selectedChampion);
       }
 
       // Item search
@@ -150,52 +482,71 @@
       document.getElementById('itemSearch').addEventListener('blur', () => {
         setTimeout(() => { document.getElementById('itemDropdown').style.display = 'none'; }, 160);
       });
-    }
 
-    // ── Champion section ────────────────────────────────────
-    function renderChampionSection() {
-      const section = document.getElementById('championSection');
-
-      // Pre-selected from URL (coming from champion page)
-      if (preselectedId) {
-        selectedChampion = { id: preselectedId, name: preselectedName || preselectedId };
-        section.innerHTML = champSelectedHTML(false);
-        return;
-      }
-
-      section.innerHTML = `
-        <div class="champion-selector-wrapper">
-          <input type="text" class="form-input" id="champSearch"
-                 placeholder="Search for a champion…" autocomplete="off">
-          <div class="champion-dropdown" id="champDropdown" style="display:none"></div>
-        </div>
-        <div id="champSelectedDisplay" style="margin-top:0.75rem"></div>
-      `;
-
+      // Champion search
       document.getElementById('champSearch').addEventListener('input', onChampSearch);
       document.getElementById('champSearch').addEventListener('blur', () => {
         setTimeout(() => { document.getElementById('champDropdown').style.display = 'none'; }, 160);
       });
     }
 
-    function champSelectedHTML(showChange = true) {
-      return `
-        <div class="selected-champion">
-          <img src="${champImgUrl(selectedChampion.id)}" alt="${selectedChampion.name}">
-          <div>
-            <div class="sc-name">${selectedChampion.name}</div>
-            ${showChange ? `<button class="sc-change" onclick="clearChampion()">Change</button>` : ''}
-          </div>
-        </div>
-      `;
+    // ── Name persistence ────────────────────────────────────
+    function loadSavedName() {
+      const saved = localStorage.getItem('summoner_name');
+      if (saved) {
+        document.getElementById('submitterName').value = saved;
+        document.getElementById('nameSaved').style.display = '';
+      }
     }
 
+    let saveNameTimer;
+    function saveName() {
+      clearTimeout(saveNameTimer);
+      saveNameTimer = setTimeout(() => {
+        const name = document.getElementById('submitterName').value.trim();
+        if (name) {
+          localStorage.setItem('summoner_name', name);
+          document.getElementById('nameSaved').style.display = '';
+        }
+      }, 600);
+    }
+
+    // ── Recent champions ────────────────────────────────────
+    function getRecentChamps() {
+      try { return JSON.parse(localStorage.getItem('recent_champs') || '[]'); }
+      catch { return []; }
+    }
+
+    function saveRecentChamp(champ) {
+      let recent = getRecentChamps().filter(c => c.id !== champ.id);
+      recent.unshift(champ);
+      recent = recent.slice(0, 5);
+      localStorage.setItem('recent_champs', JSON.stringify(recent));
+    }
+
+    function renderRecentChamps() {
+      const recent = getRecentChamps();
+      const row    = document.getElementById('recentChampsRow');
+      if (!recent.length) { row.style.display = 'none'; return; }
+
+      row.style.display = 'flex';
+      row.innerHTML = recent.map(c => `
+        <button class="champ-quick-btn ${selectedChampion?.id === c.id ? 'active' : ''}"
+                onclick="pickChampion('${c.id}', ${JSON.stringify(c.name)})"
+                title="${c.name}">
+          <img src="${champImgUrl(c.id)}" alt="${c.name}">
+          <span>${c.name}</span>
+        </button>
+      `).join('');
+    }
+
+    // ── Champion search ──────────────────────────────────────
     function onChampSearch(e) {
       const q        = e.target.value.toLowerCase().trim();
       const dropdown = document.getElementById('champDropdown');
       if (!q) { dropdown.style.display = 'none'; return; }
 
-      const hits = allChampions.filter(c => c.name.toLowerCase().includes(q)).slice(0, 10);
+      const hits = allChampions.filter(c => c.name.toLowerCase().includes(q)).slice(0, 8);
       if (!hits.length) { dropdown.style.display = 'none'; return; }
 
       dropdown.style.display = 'block';
@@ -210,17 +561,48 @@
     function pickChampion(id, name) {
       selectedChampion = { id, name };
       document.getElementById('champDropdown').style.display = 'none';
-      document.getElementById('champSearch').value = name;
-      document.getElementById('champSelectedDisplay').innerHTML = champSelectedHTML(true);
+      document.getElementById('champSearch').value = '';
+      saveRecentChamp(selectedChampion);
+      renderRecentChamps();
+      renderSelectedChamp();
+    }
+
+    function renderSelectedChamp() {
+      const display = document.getElementById('champSelectedDisplay');
+      if (!selectedChampion) { display.innerHTML = ''; return; }
+      display.innerHTML = `
+        <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;
+                    background:var(--bg);border:1px solid var(--gold);border-radius:8px;">
+          <img src="${champImgUrl(selectedChampion.id)}" style="width:40px;height:40px;border-radius:5px;">
+          <span style="font-weight:700;color:var(--gold)">${selectedChampion.name}</span>
+          <button onclick="clearChampion()" style="margin-left:auto;background:none;border:none;
+                  color:var(--text-muted);cursor:pointer;font-size:0.8rem;font-family:inherit">
+            Change
+          </button>
+        </div>`;
     }
 
     function clearChampion() {
       selectedChampion = null;
-      document.getElementById('champSearch').value = '';
-      document.getElementById('champSelectedDisplay').innerHTML = '';
+      renderSelectedChamp();
+      renderRecentChamps();
     }
 
-    // ── Item search ─────────────────────────────────────────
+    // ── Item slots ───────────────────────────────────────────
+    function renderItemSlots() {
+      const row = document.getElementById('itemSlotsRow');
+      row.innerHTML = Array.from({ length: 6 }, (_, i) => {
+        const item = selectedItems[i];
+        if (item) {
+          return `<div class="item-slot-btn filled" title="${item.name}">
+            <img src="${itemImgUrl(item.image)}" alt="${item.name}">
+            <button class="remove-btn" onclick="removeItem(${i})">×</button>
+          </div>`;
+        }
+        return `<div class="item-slot-btn" title="Click to add item" onclick="document.getElementById('itemSearch').focus()">+</div>`;
+      }).join('');
+    }
+
     function onItemSearch(e) {
       const q        = e.target.value.toLowerCase().trim();
       const dropdown = document.getElementById('itemDropdown');
@@ -235,7 +617,7 @@
       dropdown.style.display = 'block';
       dropdown.innerHTML = hits.map(item => `
         <div class="item-dropdown-item"
-             onclick="addItem(${JSON.stringify(item.id)}, ${JSON.stringify(item.name)}, ${JSON.stringify(item.image)}, ${item.gold})">
+             onclick="addItem(${JSON.stringify(item.id)},${JSON.stringify(item.name)},${JSON.stringify(item.image)},${item.gold})">
           <img src="${itemImgUrl(item.image)}" alt="${item.name}">
           <span>${item.name}</span>
           <span class="item-cost">${item.gold}g</span>
@@ -245,43 +627,22 @@
 
     function addItem(id, name, image, gold) {
       if (selectedItems.length >= 6) { showToast('Max 6 items!', 'error'); return; }
-      if (selectedItems.find(i => i.id === id)) return;
       selectedItems.push({ id, name, image, gold });
       document.getElementById('itemSearch').value = '';
       document.getElementById('itemDropdown').style.display = 'none';
-      renderSelectedItems();
+      renderItemSlots();
     }
 
-    function removeItem(id) {
-      selectedItems = selectedItems.filter(i => i.id !== id);
-      renderSelectedItems();
+    function removeItem(index) {
+      selectedItems.splice(index, 1);
+      renderItemSlots();
     }
 
-    function renderSelectedItems() {
-      const display = document.getElementById('selectedItemsDisplay');
-      const ph      = document.getElementById('itemsPlaceholder');
-      if (ph) ph.style.display = selectedItems.length ? 'none' : '';
-
-      // Remove old item nodes (keep placeholder span)
-      display.querySelectorAll('.selected-item').forEach(n => n.remove());
-
-      selectedItems.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'selected-item';
-        div.title     = item.name;
-        div.innerHTML = `
-          <img src="${itemImgUrl(item.image)}" alt="${item.name}">
-          <button class="remove-btn" onclick="removeItem('${item.id}')">×</button>
-        `;
-        display.appendChild(div);
-      });
-    }
-
-    // ── Augment pool ────────────────────────────────────────
+    // ── Augments ─────────────────────────────────────────────
     function renderAugmentPool() {
       const pool = document.getElementById('augmentPool');
-
       let list = [];
+
       if (currentTier === 'all') {
         list = [
           ...AUGMENTS.prismatic.map(n => ({ name: n, tier: 'prismatic' })),
@@ -296,7 +657,7 @@
       pool.innerHTML = list.map(a => {
         const sel = selectedAugments.find(s => s.name === a.name) ? 'selected' : '';
         return `<span class="augment-option ${a.tier} ${sel}"
-                      onclick="toggleAugment(${JSON.stringify(a.name)}, '${a.tier}')">${a.name}</span>`;
+                      onclick="toggleAugment(${JSON.stringify(a.name)},'${a.tier}')">${a.name}</span>`;
       }).join('');
     }
 
@@ -309,14 +670,13 @@
         selectedAugments.push({ name, tier });
       }
       renderAugmentPool();
-      renderSelectedAugments();
+      renderSelectedAugs();
     }
 
-    function renderSelectedAugments() {
-      const display = document.getElementById('selectedAugmentsDisplay');
+    function renderSelectedAugs() {
+      const display = document.getElementById('selectedAugsDisplay');
       const ph      = document.getElementById('augPlaceholder');
       if (ph) ph.style.display = selectedAugments.length ? 'none' : '';
-
       display.querySelectorAll('.augment-chip').forEach(n => n.remove());
       selectedAugments.forEach(a => {
         const span = document.createElement('span');
@@ -336,35 +696,33 @@
       });
     });
 
-    // ── Win / Loss ──────────────────────────────────────────
+    // ── Result ───────────────────────────────────────────────
     function setResult(win) {
       isWin = win;
       document.getElementById('winBtn').classList.toggle('active', win);
       document.getElementById('lossBtn').classList.toggle('active', !win);
     }
 
-    // ── Fun rating ──────────────────────────────────────────
-    function setFunRating(rating) {
+    // ── Stars ────────────────────────────────────────────────
+    function renderStars() {
+      document.getElementById('starRow').innerHTML = [1,2,3,4,5].map(i => `
+        <button class="star-btn ${i <= funRating ? 'active' : ''}"
+                onclick="setFun(${i})">★</button>
+      `).join('');
+    }
+
+    function setFun(rating) {
       funRating = rating;
       renderStars();
     }
 
-    function renderStars() {
-      const container = document.getElementById('starRating');
-      container.innerHTML = [1, 2, 3, 4, 5].map(i => `
-        <button class="star-btn ${i <= funRating ? 'active' : ''}"
-                data-star="${i}"
-                onclick="setFunRating(${i})">★</button>
-      `).join('');
-    }
-
-    // ── Submit ──────────────────────────────────────────────
+    // ── Submit ───────────────────────────────────────────────
     async function handleSubmit() {
-      if (!selectedChampion) { showToast('Please select a champion!', 'error'); return; }
-      if (!selectedItems.length) { showToast('Please add at least 1 item!', 'error'); return; }
+      if (!selectedChampion)     { showToast('Select a champion!', 'error'); return; }
+      if (!selectedItems.length) { showToast('Add at least 1 item!', 'error'); return; }
 
       const name = document.getElementById('submitterName').value.trim();
-      if (!name) { showToast('Please enter your name!', 'error'); return; }
+      if (!name) { showToast('Enter your name!', 'error'); return; }
 
       const btn = document.getElementById('submitBtn');
       btn.disabled    = true;
@@ -382,17 +740,17 @@
           notes:         document.getElementById('notes').value.trim() || null
         });
 
-        showToast('Build submitted! Redirecting…', 'success');
+        showToast('Build submitted!', 'success');
         setTimeout(() => {
           window.location.href =
             `champion.html?id=${encodeURIComponent(selectedChampion.id)}&name=${encodeURIComponent(selectedChampion.name)}`;
-        }, 1600);
+        }, 1200);
 
       } catch (err) {
         console.error(err);
-        showToast('Error submitting build. Please try again.', 'error');
+        showToast('Error submitting. Try again.', 'error');
         btn.disabled    = false;
-        btn.textContent = 'Submit Build';
+        btn.textContent = 'SUBMIT BUILD';
       }
     }
 
